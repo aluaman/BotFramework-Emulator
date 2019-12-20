@@ -40,7 +40,7 @@ import { existsSync, writeFileSync } from 'fs';
 import ngrokCollection from './utils/postmanNgrokCollection';
 
 import { uniqueId } from '@bfemulator/sdk-shared';
-import { TunnelInfo } from './state';
+import { TunnelInfo, TunnelStatus } from './state';
 
 /* eslint-enable typescript/no-var-requires */
 export interface NgrokOptions {
@@ -112,8 +112,11 @@ export class NgrokInstance {
     let isErrorResponse =
       response.status === 429 || response.status === 402 || response.status === 500 || !response.headers.get('Server');
     if (isErrorResponse) {
-      this.ngrokEmitter.emit('tunnelError', response);
+      this.ngrokEmitter.emit('onTunnelError', response);
+      this.ngrokEmitter.emit('onTunnelStatusPing', TunnelStatus.Error);
+      return;
     }
+    this.ngrokEmitter.emit('onTunnelStatusPing', TunnelStatus.Active);
   }
 
   public async disconnect(url?: string) {
@@ -183,7 +186,7 @@ export class NgrokInstance {
     const timeElapsed = currentTime - this.ngrokStartTime;
     if (timeElapsed >= intervals.expirationTime) {
       this.cleanUpNgrokExpirationTimer();
-      this.ngrokEmitter.emit('expired');
+      this.ngrokEmitter.emit('OnExpiry');
     } else {
       this.ngrokExpirationTimer = setTimeout(this.checkForNgrokExpiration.bind(this), intervals.expirationPoll);
     }
@@ -246,7 +249,7 @@ export class NgrokInstance {
         postmanCollectionPath,
         logPath,
       };
-      this.ngrokEmitter.emit('updateNewTunnelInfo', tunnelDetails);
+      this.ngrokEmitter.emit('onNewTunnelConnected', tunnelDetails);
       this.pendingConnection = null;
       return { url: publicUrl, inspectUrl: this.inspectUrl };
     }

@@ -46,7 +46,7 @@ import './fetchProxy';
 import { Window } from './platform/window';
 import { azureLoggedInUserChanged } from './state/actions/azureAuthActions';
 import { rememberBounds } from './state/actions/windowStateActions';
-import { updateTunnelError, TunnelInfo, updateNewTunnelInfo } from './state/actions/ngrokTunnelActions';
+import { updateTunnelError, TunnelInfo, updateNewTunnelInfo, TunnelStatus, updateTunnelStatus } from './state/actions/ngrokTunnelActions';
 import * as EditorActions from './state/actions/editorActions';
 import { dispatch, getSettings, store } from './state/store';
 import { TelemetryService } from './telemetry';
@@ -156,9 +156,10 @@ class EmulatorApplication {
   }
 
   private initializeNgrokListeners() {
-    Emulator.getInstance().ngrok.ngrokEmitter.on('expired', this.onNgrokSessionExpired);
-    Emulator.getInstance().ngrok.ngrokEmitter.on('tunnelError', this.onNgrokTunnelError);
-    Emulator.getInstance().ngrok.ngrokEmitter.on('updateNewTunnelInfo', this.updateNewTunnelInfo);
+    Emulator.getInstance().ngrok.ngrokEmitter.on('OnExpiry', this.onSessionExpired);
+    Emulator.getInstance().ngrok.ngrokEmitter.on('onTunnelError', this.onTunnelError);
+    Emulator.getInstance().ngrok.ngrokEmitter.on('onNewTunnelConnected', this.onNewTunnelConnected);
+    Emulator.getInstance().ngrok.ngrokEmitter.on('onTunnelStatusPing', this.onTunnelStatusPing);
   }
 
   private initializeSystemPreferencesListeners() {
@@ -246,11 +247,15 @@ class EmulatorApplication {
     dispatch(rememberBounds(bounds));
   };
 
-  private updateNewTunnelInfo = async (tunnelInfo: TunnelInfo) => {
+  private onTunnelStatusPing = async(status: TunnelStatus) => {
+    dispatch(updateTunnelStatus(status))
+  }
+
+  private onNewTunnelConnected = async (tunnelInfo: TunnelInfo) => {
     dispatch(updateNewTunnelInfo(tunnelInfo));
   };
 
-  private onNgrokTunnelError = async response => {
+  private onTunnelError = async response => {
     const errorMessage = await response.json();
     dispatch(
       updateTunnelError({
@@ -279,7 +284,7 @@ class EmulatorApplication {
   };
 
   // ngrok listeners
-  private onNgrokSessionExpired = async () => {
+  private onSessionExpired = async () => {
     // when ngrok expires, spawn notification to reconnect
     const ngrokNotification: Notification = newNotification(
       'Your ngrok tunnel instance has expired. Would you like to reconnect to a new tunnel?'

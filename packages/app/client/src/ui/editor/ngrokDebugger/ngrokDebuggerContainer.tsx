@@ -1,13 +1,14 @@
-import * as React from 'react';
+import React, { useEffect } from 'react';
 import { connect } from 'react-redux';
 import { Action } from 'redux';
 import { Column, Row, LinkButton, LargeHeader } from '@bfemulator/ui-react';
 import { SharedConstants } from '@bfemulator/app-shared';
 import { RootState } from '../../../state/store';
-import { TunnelError } from '../../../state';
+import { TunnelError, TunnelStatus } from '../../../state';
 import { executeCommand } from '../../../state/actions/commandActions';
 import { GenericDocument } from '../../layout';
 import * as styles from './ngrokDebuggerContainer.scss';
+
 
 export interface NgrokDebuggerProps {
   inspectUrl: string;
@@ -15,8 +16,11 @@ export interface NgrokDebuggerProps {
   publicUrl: string;
   logPath: string;
   postmanCollectionPath: string;
-  onAnchorClick: any;
-  onSaveFileClick: any;
+  tunnelStatus: TunnelStatus;
+  timestamp: string;
+  onAnchorClick: (linkRef: string) => void;
+  onSaveFileClick: (originalFilePath: string, dialogOptions: Electron.SaveDialogOptions) => void;
+  onCheckNgrokStatusClick: () => void
 }
 
 const dialogOptions: Electron.SaveDialogOptions = {
@@ -25,9 +29,26 @@ const dialogOptions: Electron.SaveDialogOptions = {
 };
 
 export const NgrokDebugger = (props: NgrokDebuggerProps) => {
+  const [statusDisplay, setStatusDisplay] = useState({
+    status: 'Inactive',
+    iconClass: '' 
+  });
+
   const convertToAnchorOnClick = (link: string) => {
     props.onAnchorClick(link);
   };
+
+  useEffect(() => {
+    switch (props.tunnelStatus) {
+      case TunnelStatus.Active:
+
+        break;
+      case TunnelStatus.Error:
+        break;
+      default:
+        break;
+    }
+  }, [props.tunnelStatus]);
 
   const tunnelConnections = (
     <section>
@@ -89,20 +110,25 @@ export const NgrokDebugger = (props: NgrokDebuggerProps) => {
                 <legend>Tunnel Status</legend>
                 <span> InActive </span>
                 <span className={[styles.tunnelHealthIndicator, styles.healthStatusBad].join(' ')} />
-                <span>&nbsp; (December 18th, 2020 2:34:34 PM)</span>
+                <span>&nbsp;{props.timestamp}</span>
               </li>
               <li>
-                <LinkButton linkRole={true} onClick={() => convertToAnchorOnClick('http://53frcg.io/')}>
+                <LinkButton linkRole={true} onClick={props.onCheckNgrokStatusClick}>
                   Click here
                 </LinkButton>
                 &nbsp;to ping the tunnel now
               </li>
-              <li>
-                <div>
-                  <legend>Tunnel Errors</legend>
-                  <p className={styles.errorWindow}>Test</p>
-                </div>
-              </li>
+              {
+                props.errors.statusCode
+                ? <li>
+                    <div>
+                      <legend>Tunnel Errors</legend>
+                      <p className={styles.errorWindow}>Test</p>
+                    </div>
+                  </li>
+                : null
+              }
+              
             </ul>
           </section>
           {props.publicUrl ? tunnelConnections : null}
@@ -113,15 +139,16 @@ export const NgrokDebugger = (props: NgrokDebuggerProps) => {
 };
 
 const mapStateToProps = (state: RootState, ownProps: {}): Partial<NgrokDebuggerProps> => {
-  const { inspectUrl, errors, publicUrl, logPath, postmanCollectionPath } = state.ngrokTunnel;
-
+  const { inspectUrl, errors, publicUrl, logPath, postmanCollectionPath, tunnelStatus, timestamp } = state.ngrokTunnel;
   return {
     inspectUrl,
     errors,
     publicUrl,
     logPath,
     postmanCollectionPath,
-    ...ownProps,
+    tunnelStatus,
+    timestamp,
+    ...ownProps
   };
 };
 
