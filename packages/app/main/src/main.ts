@@ -46,7 +46,13 @@ import './fetchProxy';
 import { Window } from './platform/window';
 import { azureLoggedInUserChanged } from './state/actions/azureAuthActions';
 import { rememberBounds } from './state/actions/windowStateActions';
-import { updateTunnelError, TunnelInfo, updateNewTunnelInfo, TunnelStatus, updateTunnelStatus } from './state/actions/ngrokTunnelActions';
+import {
+  updateTunnelError,
+  TunnelInfo,
+  updateNewTunnelInfo,
+  TunnelStatus,
+  updateTunnelStatus,
+} from './state/actions/ngrokTunnelActions';
 import * as EditorActions from './state/actions/editorActions';
 import { dispatch, getSettings, store } from './state/store';
 import { TelemetryService } from './telemetry';
@@ -247,20 +253,20 @@ class EmulatorApplication {
     dispatch(rememberBounds(bounds));
   };
 
-  private onTunnelStatusPing = async(status: TunnelStatus) => {
-    dispatch(updateTunnelStatus(status))
-  }
+  private onTunnelStatusPing = async (status: TunnelStatus) => {
+    dispatch(updateTunnelStatus(status));
+  };
 
   private onNewTunnelConnected = async (tunnelInfo: TunnelInfo) => {
     dispatch(updateNewTunnelInfo(tunnelInfo));
   };
 
   private onTunnelError = async response => {
-    const errorMessage = await response.json();
+    console.log('Inside TUNNEL ERROR', response);
     dispatch(
       updateTunnelError({
         statusCode: response.status,
-        errorMessage,
+        errorMessage: response.errorMessage,
       })
     );
 

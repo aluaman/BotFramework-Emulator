@@ -103,8 +103,8 @@ export class NgrokInstance {
     return tunnelInfo;
   }
 
-  private async checkTunnelStatus(inspectUrl: string): Promise<void> {
-    const response: Response = await fetch(inspectUrl, {
+  public async checkTunnelStatus(publicUrl: string): Promise<void> {
+    const response: Response = await fetch(publicUrl, {
       headers: {
         'Content-Type': 'application/json',
       },
@@ -112,7 +112,11 @@ export class NgrokInstance {
     let isErrorResponse =
       response.status === 429 || response.status === 402 || response.status === 500 || !response.headers.get('Server');
     if (isErrorResponse) {
-      this.ngrokEmitter.emit('onTunnelError', response);
+      const errorMessage = await response.text();
+      this.ngrokEmitter.emit('onTunnelError', {
+        status: response.status,
+        errorMessage,
+      });
       this.ngrokEmitter.emit('onTunnelStatusPing', TunnelStatus.Error);
       return;
     }
