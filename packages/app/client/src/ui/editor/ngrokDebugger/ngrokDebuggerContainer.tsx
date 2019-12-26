@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { connect } from 'react-redux';
 import { Action } from 'redux';
 import { Column, Row, LinkButton, LargeHeader } from '@bfemulator/ui-react';
+import NgrokErrorHandler from './ngrokErrorHandler';
 import { SharedConstants } from '@bfemulator/app-shared';
 import { RootState } from '../../../state/store';
 import { TunnelError, TunnelStatus } from '../../../state';
@@ -50,15 +51,9 @@ export const NgrokDebugger = (props: NgrokDebuggerProps) => {
 
   const errorDetailsContainer =
     props.tunnelStatus === TunnelStatus.Error ? (
-      <li>
-        <div>
-          <legend>Tunnel Errors</legend>
-          <p className={styles.errorWindow}>
-            <legend>{props.errors.statusCode}</legend>
-            {props.errors.errorMessage}
-          </p>
-        </div>
-      </li>
+      <section className={styles.errorDetailedViewer}>
+        <NgrokErrorHandler errors={props.errors} />
+      </section>
     ) : null;
 
   const tunnelConnections = (

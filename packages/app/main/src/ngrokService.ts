@@ -41,7 +41,6 @@ import {
   isLocalHostUrl,
   LogItem,
   LogLevel,
-  ngrokExpirationItem,
   textItem,
 } from '@bfemulator/sdk-shared';
 
@@ -194,11 +193,6 @@ export class NgrokService {
     return this.ngrok.running() || false;
   }
 
-  /** Logs a message in all active conversations that ngrok has expired */
-  public broadcastNgrokExpired(): void {
-    this.broadcast(ngrokExpirationItem('ngrok tunnel has expired.'));
-  }
-
   /** Logs messages signifying that ngrok has reconnected in all active conversations */
   public broadcastNgrokReconnected(): void {
     const bypassNgrokLocalhost = getSettings().framework.bypassNgrokLocalhost;
@@ -212,6 +206,9 @@ export class NgrokService {
       broadcast(textItem(LogLevel.Debug, 'Will use ngrok for local addresses'));
     }
   }
+
+  /** Logs messages signifying that ngrok has reconnected in all active conversations */
+  public broadcastNgrokError(): void {}
 
   /** Logs an item to all open conversations */
   public broadcast(...logItems: LogItem[]): void {

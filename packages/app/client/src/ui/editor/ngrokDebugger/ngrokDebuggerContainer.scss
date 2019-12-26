@@ -64,6 +64,11 @@
       }
     }
   }
+
+  .error-detailed-viewer {
+    border: 1px solid var(--focused-outline);
+    color: var(--error-text);
+  }
   
   .console-viewer {
     background: var(--success-bg);

@@ -162,7 +162,6 @@ class EmulatorApplication {
   }
 
   private initializeNgrokListeners() {
-    Emulator.getInstance().ngrok.ngrokEmitter.on('OnExpiry', this.onSessionExpired);
     Emulator.getInstance().ngrok.ngrokEmitter.on('onTunnelError', this.onTunnelError);
     Emulator.getInstance().ngrok.ngrokEmitter.on('onNewTunnelConnected', this.onNewTunnelConnected);
     Emulator.getInstance().ngrok.ngrokEmitter.on('onTunnelStatusPing', this.onTunnelStatusPing);
@@ -262,7 +261,6 @@ class EmulatorApplication {
   };
 
   private onTunnelError = async response => {
-    console.log('Inside TUNNEL ERROR', response);
     dispatch(
       updateTunnelError({
         statusCode: response.status,
@@ -271,9 +269,9 @@ class EmulatorApplication {
     );
 
     const ngrokNotification: Notification = newNotification(
-      'Your ngrok tunnel instance seems to have a glitch. Please check the Ngrok debug console for more details'
+      'Oops.. Your ngrok tunnel seems to have an error. Please check the Ngrok Debug Console for more details'
     );
-    ngrokNotification.addButton('Take me to Ngrok Debugger', () => {
+    ngrokNotification.addButton('Debug Console', () => {
       // Go to Ngrok from here
       const { Commands } = SharedConstants;
       this.commandService.remoteCall(Commands.Notifications.Remove, ngrokNotification.id);
@@ -287,29 +285,6 @@ class EmulatorApplication {
       );
     });
     await sendNotificationToClient(ngrokNotification, this.commandService);
-  };
-
-  // ngrok listeners
-  private onSessionExpired = async () => {
-    // when ngrok expires, spawn notification to reconnect
-    const ngrokNotification: Notification = newNotification(
-      'Your ngrok tunnel instance has expired. Would you like to reconnect to a new tunnel?'
-    );
-    ngrokNotification.addButton('Dismiss', () => {
-      const { Commands } = SharedConstants;
-      this.commandService.remoteCall(Commands.Notifications.Remove, ngrokNotification.id);
-    });
-    ngrokNotification.addButton('Reconnect', async () => {
-      try {
-        const { Commands } = SharedConstants;
-        await this.commandService.call(Commands.Ngrok.Reconnect);
-        this.commandService.remoteCall(Commands.Notifications.Remove, ngrokNotification.id);
-      } catch (e) {
-        await sendNotificationToClient(newNotification(e), this.commandService);
-      }
-    });
-    await sendNotificationToClient(ngrokNotification, this.commandService);
-    Emulator.getInstance().ngrok.broadcastNgrokExpired();
   };
 
   private onInvertedColorSchemeChanged = () => {

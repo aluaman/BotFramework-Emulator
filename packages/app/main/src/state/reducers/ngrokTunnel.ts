@@ -68,21 +68,24 @@ export function ngrokTunnel(
   switch (action.type) {
     case NgrokTunnelActions.setDetails:
       const tunnelInfo: TunnelInfo = action.payload as TunnelInfo;
-      state.inspectUrl = tunnelInfo.inspectUrl;
-      state.publicUrl = tunnelInfo.publicUrl;
-      state.logPath = tunnelInfo.logPath;
-      state.postmanCollectionPath = tunnelInfo.postmanCollectionPath;
+      state = {
+        ...state,
+        ...tunnelInfo,
+      };
       break;
     case NgrokTunnelActions.updateOnError:
-      state.errors = action.payload as TunnelError;
+      state = {
+        ...state,
+        errors: action.payload as TunnelError,
+      };
       break;
     case NgrokTunnelActions.setStatus:
       const info: TunnelStatusAndTs = action.payload as TunnelStatusAndTs;
-      state.tunnelStatus = info.status;
-      state.lastTunnelStatusCheckTS = info.ts;
-      if (state.tunnelStatus !== TunnelStatus.Error) {
-        state.errors = {};
-      }
+      state = {
+        ...state,
+        tunnelStatus: info.status,
+        lastTunnelStatusCheckTS: info.ts,
+      };
       break;
   }
   return state;

@@ -6,6 +6,7 @@ export const tunnelHealthIndicator: string;
 export const tunnelError: string;
 export const tunnelInactive: string;
 export const tunnelActive: string;
+export const errorDetailedViewer: string;
 export const consoleViewer: string;
 export const errorWindow: string;
 export const spacing: string;

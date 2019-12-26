@@ -36,7 +36,7 @@ import { clearTimeout, setTimeout } from 'timers';
 import { platform } from 'os';
 import * as path from 'path';
 import { ensureStoragePath, writeFile } from './utils';
-import { existsSync, writeFileSync } from 'fs';
+import { existsSync } from 'fs';
 import ngrokCollection from './utils/postmanNgrokCollection';
 
 import { uniqueId } from '@bfemulator/sdk-shared';
@@ -85,8 +85,7 @@ export class NgrokInstance {
   private ngrokProcess: ChildProcess;
   private tunnels = {};
   private inspectUrl = '';
-  private ngrokStartTime: number;
-  private ngrokExpirationTimer: NodeJS.Timer;
+  private intervalForHealthCheck: NodeJS.Timer = null;
 
   public running(): boolean {
     return this.ngrokProcess && !!this.ngrokProcess.pid;
@@ -99,7 +98,7 @@ export class NgrokInstance {
     }
     await this.getNgrokInspectUrl(options);
     const tunnelInfo: { url; inspectUrl } = await this.runTunnel(options);
-    setInterval(() => this.checkTunnelStatus.bind(this)(tunnelInfo.url), 60000);
+    this.intervalForHealthCheck = setInterval(() => this.checkTunnelStatus.bind(this)(tunnelInfo.url), 60000);
     return tunnelInfo;
   }
 
@@ -117,10 +116,8 @@ export class NgrokInstance {
         status: response.status,
         errorMessage,
       });
-      this.ngrokEmitter.emit('onTunnelStatusPing', TunnelStatus.Error);
-      return;
     }
-    this.ngrokEmitter.emit('onTunnelStatusPing', TunnelStatus.Active);
+    this.ngrokEmitter.emit('onTunnelStatusPing', isErrorResponse ? TunnelStatus.Error : TunnelStatus.Active);
   }
 
   public async disconnect(url?: string) {
@@ -135,6 +132,7 @@ export class NgrokInstance {
       delete this.tunnels[response.url];
       this.ngrokEmitter.emit('disconnect', response.url);
     });
+    clearInterval(this.intervalForHealthCheck);
   }
 
   public kill() {
@@ -147,7 +145,7 @@ export class NgrokInstance {
     this.ngrokProcess.kill();
     this.ngrokProcess = null;
     this.tunnels = {};
-    this.cleanUpNgrokExpirationTimer();
+    clearInterval(this.intervalForHealthCheck);
   }
 
   private async getNgrokInspectUrl(opts: NgrokOptions): Promise<{ inspectUrl: string }> {
@@ -184,29 +182,10 @@ export class NgrokInstance {
     return { inspectUrl: this.inspectUrl };
   }
 
-  /** Checks if the ngrok tunnel is due for expiration */
-  private checkForNgrokExpiration(): void {
-    const currentTime = Date.now();
-    const timeElapsed = currentTime - this.ngrokStartTime;
-    if (timeElapsed >= intervals.expirationTime) {
-      this.cleanUpNgrokExpirationTimer();
-      this.ngrokEmitter.emit('OnExpiry');
-    } else {
-      this.ngrokExpirationTimer = setTimeout(this.checkForNgrokExpiration.bind(this), intervals.expirationPoll);
-    }
-  }
-
-  /** Clears the ngrok expiration timer and resets the tunnel start time */
-  private cleanUpNgrokExpirationTimer(): void {
-    this.ngrokStartTime = null;
-    clearTimeout(this.ngrokExpirationTimer);
-  }
-
   private updatePostmanCollectionWithNewUrls(inspectUrl: string): void {
     const postmanCopy = JSON.stringify(ngrokCollection);
     const collectionWithUrlReplaced = postmanCopy.replace(/127.0.0.1:4040/g, inspectUrl.replace(/(^\w+:|^)\/\//, ''));
-    writeFileSync(postmanCollectionPath, collectionWithUrlReplaced);
-    console.log(postmanCollectionPath);
+    writeFile(postmanCollectionPath, collectionWithUrlReplaced);
   }
 
   private async runTunnel(opts: NgrokOptions): Promise<{ url: string; inspectUrl: string }> {
@@ -242,9 +221,6 @@ export class NgrokInstance {
       if (opts.proto === 'http' && opts.bind_tls) {
         this.tunnels[publicUrl.replace('https', 'http')] = uri + ' (http)';
       }
-      this.ngrokStartTime = Date.now();
-      this.ngrokExpirationTimer = setTimeout(this.checkForNgrokExpiration.bind(this), intervals.expirationPoll);
-
       this.ngrokEmitter.emit('connect', publicUrl, this.inspectUrl);
       this.updatePostmanCollectionWithNewUrls(this.inspectUrl);
       const tunnelDetails: TunnelInfo = {
@@ -279,14 +255,13 @@ export class NgrokInstance {
       ngrok.on('error', e => this.ngrokEmitter.emit('error', e));
 
       ngrok.on('exit', () => {
-        console.log('Inside exit');
         this.tunnels = {};
-        this.cleanUpNgrokExpirationTimer();
+        clearInterval(this.intervalForHealthCheck);
         this.ngrokEmitter.emit('disconnect');
       });
 
       ngrok.on('close', () => {
-        this.cleanUpNgrokExpirationTimer();
+        clearInterval(this.intervalForHealthCheck);
         this.ngrokEmitter.emit('close');
       });
 
@@ -295,7 +270,6 @@ export class NgrokInstance {
       });
 
       ngrok.stderr.on('data', (data: Buffer) => this.ngrokEmitter.emit('error', data.toString()));
-      console.log(ngrok.pid);
       return ngrok;
     } catch (e) {
       throw new Error(`Ngrok spawning failed`);
