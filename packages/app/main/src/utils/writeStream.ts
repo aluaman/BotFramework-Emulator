@@ -1,7 +1,7 @@
 import { createWriteStream } from 'fs';
 
 export interface FileWriteStream {
-  write: (content: string, newLine: boolean) => void;
+  write: (content: string, newLine?: boolean) => void;
   end: () => void;
 }
 
